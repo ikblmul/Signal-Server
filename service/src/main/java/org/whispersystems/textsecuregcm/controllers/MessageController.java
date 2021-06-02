@@ -6,6 +6,12 @@ package org.whispersystems.textsecuregcm.controllers;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
+import com.amazonaws.services.dynamodbv2.document.DynamoDB;
+import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
+import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.codahale.metrics.Histogram;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
@@ -118,7 +124,7 @@ public class MessageController {
   private final AccountsManager             accountsManager;
   private final MessagesManager             messagesManager;
   private final UnsealedSenderRateLimiter   unsealedSenderRateLimiter;
-  private final ApnFallbackManager          apnFallbackManager;
+//  private final ApnFallbackManager          apnFallbackManager;
   private final DynamicConfigurationManager dynamicConfigurationManager;
   private final RateLimitChallengeManager   rateLimitChallengeManager;
   private final ReportMessageManager        reportMessageManager;
@@ -148,7 +154,7 @@ public class MessageController {
       AccountsManager accountsManager,
       MessagesManager messagesManager,
       UnsealedSenderRateLimiter unsealedSenderRateLimiter,
-      ApnFallbackManager apnFallbackManager,
+//      ApnFallbackManager apnFallbackManager,
       DynamicConfigurationManager dynamicConfigurationManager,
       RateLimitChallengeManager rateLimitChallengeManager,
       ReportMessageManager reportMessageManager,
@@ -161,7 +167,7 @@ public class MessageController {
     this.accountsManager             = accountsManager;
     this.messagesManager             = messagesManager;
     this.unsealedSenderRateLimiter   = unsealedSenderRateLimiter;
-    this.apnFallbackManager          = apnFallbackManager;
+//    this.apnFallbackManager          = apnFallbackManager;
     this.dynamicConfigurationManager = dynamicConfigurationManager;
     this.rateLimitChallengeManager   = rateLimitChallengeManager;
     this.reportMessageManager        = reportMessageManager;
@@ -301,6 +307,8 @@ public class MessageController {
           .findFirst()
           .map(IncomingMessage::isOnline)
           .orElse(messages.isOnline());
+
+      System.out.println(online);
 
       final List<Tag> tags = List.of(UserAgentTagUtil.getPlatformTag(userAgent),
                                      Tag.of(EPHEMERAL_TAG_NAME, String.valueOf(online)),
@@ -476,7 +484,7 @@ public class MessageController {
     assert account.getAuthenticatedDevice().isPresent();
 
     if (!Util.isEmpty(account.getAuthenticatedDevice().get().getApnId())) {
-      RedisOperation.unchecked(() -> apnFallbackManager.cancel(account, account.getAuthenticatedDevice().get()));
+//      RedisOperation.unchecked(() -> apnFallbackManager.cancel(account, account.getAuthenticatedDevice().get()));
     }
 
     final OutgoingMessageEntityList outgoingMessages = messagesManager.getMessagesForDevice(

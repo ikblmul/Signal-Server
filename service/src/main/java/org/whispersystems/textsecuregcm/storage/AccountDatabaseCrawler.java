@@ -79,7 +79,7 @@ public class AccountDatabaseCrawler implements Managed, Runnable {
         accelerated = doPeriodicWork();
         sleepWhileRunning(accelerated ? ACCELERATED_CHUNK_INTERVAL : chunkIntervalMs);
       } catch (Throwable t) {
-        logger.warn("error in database crawl: {}: {}", t.getClass().getSimpleName(), t.getMessage(), t);
+//        logger.warn("error in database crawl: {}: {}", t.getClass().getSimpleName(), t.getMessage(), t);
         Util.sleep(10000);
       }
     }

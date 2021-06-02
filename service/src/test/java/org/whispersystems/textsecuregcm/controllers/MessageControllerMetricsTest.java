@@ -38,7 +38,7 @@ public class MessageControllerMetricsTest extends AbstractRedisClusterTest {
         mock(AccountsManager.class),
         mock(MessagesManager.class),
         mock(UnsealedSenderRateLimiter.class),
-        mock(ApnFallbackManager.class),
+//        mock(ApnFallbackManager.class),
         mock(DynamicConfigurationManager.class),
         mock(RateLimitChallengeManager.class),
         mock(ReportMessageManager.class),

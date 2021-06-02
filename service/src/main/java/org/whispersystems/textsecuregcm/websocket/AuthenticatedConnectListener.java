@@ -39,20 +39,21 @@ public class AuthenticatedConnectListener implements WebSocketConnectListener {
   private final ReceiptSender         receiptSender;
   private final MessagesManager       messagesManager;
   private final MessageSender         messageSender;
-  private final ApnFallbackManager    apnFallbackManager;
+//  private final ApnFallbackManager    apnFallbackManager;
   private final ClientPresenceManager clientPresenceManager;
   private final ScheduledExecutorService retrySchedulingExecutor;
 
   public AuthenticatedConnectListener(ReceiptSender receiptSender,
       MessagesManager messagesManager,
-      final MessageSender messageSender, ApnFallbackManager apnFallbackManager,
+      final MessageSender messageSender,
+//      ApnFallbackManager apnFallbackManager,
       ClientPresenceManager clientPresenceManager,
       ScheduledExecutorService retrySchedulingExecutor)
   {
     this.receiptSender         = receiptSender;
     this.messagesManager       = messagesManager;
     this.messageSender         = messageSender;
-    this.apnFallbackManager    = apnFallbackManager;
+//    this.apnFallbackManager    = apnFallbackManager;
     this.clientPresenceManager = clientPresenceManager;
     this.retrySchedulingExecutor = retrySchedulingExecutor;
   }
@@ -69,7 +70,7 @@ public class AuthenticatedConnectListener implements WebSocketConnectListener {
                                                                              retrySchedulingExecutor);
 
       openWebsocketCounter.inc();
-      RedisOperation.unchecked(() -> apnFallbackManager.cancel(account, device));
+//      RedisOperation.unchecked(() -> apnFallbackManager.cancel(account, device));
 
       context.addListener(new WebSocketSessionContext.WebSocketEventListener() {
         @Override

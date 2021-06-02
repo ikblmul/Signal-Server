@@ -1,0 +1,12 @@
+version : "3.3"
+
+services:
+    signal_server:
+        container_name: signal_server_v0.1-alpha
+        build:
+         dockerfile: Dockerfile
+         context: ./
+        ports:
+        - "8080:8000"
+        volumes: 
+         - './service/config:/var/www/service/config'

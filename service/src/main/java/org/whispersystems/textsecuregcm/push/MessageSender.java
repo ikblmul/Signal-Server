@@ -36,11 +36,11 @@ import static org.whispersystems.textsecuregcm.entities.MessageProtos.Envelope;
  */
 public class MessageSender implements Managed {
 
-  private final ApnFallbackManager         apnFallbackManager;
+//  private final ApnFallbackManager         apnFallbackManager;
   private final ClientPresenceManager      clientPresenceManager;
   private final MessagesManager            messagesManager;
   private final GCMSender                  gcmSender;
-  private final APNSender                  apnSender;
+//  private final APNSender                  apnSender;
   private final PushLatencyManager         pushLatencyManager;
 
   private static final String SEND_COUNTER_NAME      = name(MessageSender.class, "sendMessage");
@@ -48,18 +48,19 @@ public class MessageSender implements Managed {
   private static final String EPHEMERAL_TAG_NAME     = "ephemeral";
   private static final String CLIENT_ONLINE_TAG_NAME = "clientOnline";
 
-  public MessageSender(ApnFallbackManager    apnFallbackManager,
+  public MessageSender(
+//      ApnFallbackManager    apnFallbackManager,
                        ClientPresenceManager clientPresenceManager,
                        MessagesManager       messagesManager,
                        GCMSender             gcmSender,
-                       APNSender             apnSender,
+//                       APNSender             apnSender,
                        PushLatencyManager    pushLatencyManager)
   {
-    this.apnFallbackManager    = apnFallbackManager;
+//    this.apnFallbackManager    = apnFallbackManager;
     this.clientPresenceManager = clientPresenceManager;
     this.messagesManager       = messagesManager;
     this.gcmSender             = gcmSender;
-    this.apnSender             = apnSender;
+//    this.apnSender             = apnSender;
     this.pushLatencyManager    = pushLatencyManager;
   }
 
@@ -99,9 +100,12 @@ public class MessageSender implements Managed {
       clientPresent = clientPresenceManager.isPresent(account.getUuid(), device.getId());
 
       if (!clientPresent) {
-        sendNewMessageNotification(account, device);
+//        sendNewMessageNotification(account, device);
       }
     }
+
+    sendNewMessageNotification(account, device);
+
 
     final List<Tag> tags = List.of(
             Tag.of(CHANNEL_TAG_NAME, channel),
@@ -115,7 +119,7 @@ public class MessageSender implements Managed {
     if (!Util.isEmpty(device.getGcmId())) {
       sendGcmNotification(account, device);
     } else if (!Util.isEmpty(device.getApnId()) || !Util.isEmpty(device.getVoipApnId())) {
-      sendApnNotification(account, device);
+//      sendApnNotification(account, device);
     }
   }
 
@@ -131,25 +135,26 @@ public class MessageSender implements Managed {
   private void sendApnNotification(Account account, Device device) {
     ApnMessage apnMessage;
 
+
     if (!Util.isEmpty(device.getVoipApnId())) {
       apnMessage = new ApnMessage(device.getVoipApnId(), account.getNumber(), device.getId(), true, Type.NOTIFICATION, Optional.empty());
-      RedisOperation.unchecked(() -> apnFallbackManager.schedule(account, device));
+//      RedisOperation.unchecked(() -> apnFallbackManager.schedule(account, device));
     } else {
       apnMessage = new ApnMessage(device.getApnId(), account.getNumber(), device.getId(), false, Type.NOTIFICATION, Optional.empty());
     }
 
-    apnSender.sendMessage(apnMessage);
+//    apnSender.sendMessage(apnMessage);
 
     RedisOperation.unchecked(() -> pushLatencyManager.recordPushSent(account.getUuid(), device.getId()));
   }
 
   @Override
   public void start() {
-    apnSender.start();
+//    apnSender.start();
   }
 
   @Override
   public void stop() {
-    apnSender.stop();
+//    apnSender.stop();
   }
 }

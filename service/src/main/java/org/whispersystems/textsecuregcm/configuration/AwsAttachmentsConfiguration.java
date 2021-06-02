@@ -11,6 +11,10 @@ public class AwsAttachmentsConfiguration {
 
   @NotEmpty
   @JsonProperty
+  private String endpoint;
+
+  @NotEmpty
+  @JsonProperty
   private String accessKey;
 
   @NotEmpty
@@ -40,4 +44,6 @@ public class AwsAttachmentsConfiguration {
   public String getRegion() {
     return region;
   }
+
+  public String getEndpoint() { return endpoint;}
 }

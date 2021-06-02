@@ -25,6 +25,8 @@ public class ReportMessageDynamoDb {
 
   public void store(byte[] hash) {
 
+
+    System.out.println(buildItemForHash(hash));
     table.putItem(buildItemForHash(hash));
   }
 

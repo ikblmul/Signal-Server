@@ -1,0 +1,343 @@
+# Database Configuration
+accountDatabaseCrawler:
+  chunkSize: 1000
+  chunkIntervalMs: 8000
+
+push:
+  queueSize: # Size of push pending queue
+
+turn: # TURN server configuration
+  secret: north # TURN server secret
+  uris:
+    - localhost:49162
+    - localhost:49163
+    - localhost:49164
+    - localhost:49165
+    - localhost:49166
+
+tor:
+  listUrl: "url"
+
+cacheCluster: # Redis server configuration for cache cluster
+  urls:
+    - redis://172.23.0.2:7001
+    - redis://172.23.0.2:7002
+    - redis://172.23.0.2:7003
+
+directory:
+  client: # Configuration for interfacing with Contact Discovery Service cluster
+    userAuthenticationTokenSharedSecret: 00000F # hex-encoded secret shared with CDS used to generate auth tokens for Signal users
+    userAuthenticationTokenUserIdSecret: 00000F # hex-encoded secret shared among Signal-Servers to obscure user phone numbers from CDS
+  sqs:
+    accessKey: notValidKey # AWS SQS accessKey
+    accessSecret: notValidSecret # AWS SQS accessSecret
+    queueUrls:
+      - http://localhost:9324/queue/test-queue.fifo # AWS SQS queue url
+  server:
+    - replicationName: "My Server"
+      replicationUrl: "localhost://" # CDS replication endpoint base url
+      replicationPassword: 1 # CDS replication endpoint password
+      replicationCaCertificate: |
+        -----BEGIN CERTIFICATE-----
+        MIIEFTCCAv2gAwIBAgIUOExB88cXeRv1wODdFSFAi5G9CH4wDQYJKoZIhvcNAQEL
+        BQAwgZkxCzAJBgNVBAYTAklEMRAwDgYDVQQIDAdKYWthcnRhMRAwDgYDVQQHDAdK
+        YWthcnRhMSQwIgYDVQQKDBtGYWxhaCBJbm92YXNpIFRla25vbG9naSBEZXYxDDAK
+        BgNVBAsMA0RldjESMBAGA1UEAwwJbG9jYWxob3N0MR4wHAYJKoZIhvcNAQkBFg9s
+        b2NhbEBnbWFpbC5jb20wHhcNMjEwNTIxMDMxNzE1WhcNMjYwNTIwMDMxNzE1WjCB
+        mTELMAkGA1UEBhMCSUQxEDAOBgNVBAgMB0pha2FydGExEDAOBgNVBAcMB0pha2Fy
+        dGExJDAiBgNVBAoMG0ZhbGFoIElub3Zhc2kgVGVrbm9sb2dpIERldjEMMAoGA1UE
+        CwwDRGV2MRIwEAYDVQQDDAlsb2NhbGhvc3QxHjAcBgkqhkiG9w0BCQEWD2xvY2Fs
+        QGdtYWlsLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAOC26W4j
+        0QSj2jDqogrw2WqZqrKwABGydp4bVErH69yUSrSiR4luHk52HeZbCoWyqYx6z1xD
+        lByB/9wR4bwuxw17v0gZWVW71vV3osptEBG9dWY32ZM//2eMX1fBHonX6PqMOSMH
+        Vi524c0+mgZPFOulpVUd0MA9VfZrN83Aifb64OJ36I/eHuY9iHk6sFKH5EFhdCqm
+        vP0ksKO5XsgBqTv2CtG1UHw0GK2OWUfUxL32n7SxmdMhJFHQO2Nr2RE4RIDFSBGq
+        wcMcw81TJLXr04IkV3+mCkNdxyZM6L5gzrnDu7l0Lh+A9rwbVZT/fg8cL/rrKWZ9
+        tl6Ddl8JMnsJ4XkCAwEAAaNTMFEwHQYDVR0OBBYEFGCoKW3ybjQSnto2moZthRpZ
+        mbl4MB8GA1UdIwQYMBaAFGCoKW3ybjQSnto2moZthRpZmbl4MA8GA1UdEwEB/wQF
+        MAMBAf8wDQYJKoZIhvcNAQELBQADggEBACSCqxggFUz+zJqUqXs5YTndrgBDabRe
+        1Kb/1yrB+lvkedevzrTIMdPjeIPdH+aYuua+8DyFoaZWDQDgB3uBKI8gr7V15atA
+        gSWq0Qwn/4xQjgieKZmnxvvqhEJrwm2VpaOVUSw5gFJoXif4Sw/AJjn9GmYrt1yD
+        5+KK11jd+PTPYE4AElK/C6ZHPmPFt02cx0QDe7B6WVK+RLeODgVxWt67zgCI1pfJ
+        oP5LRVCOR9VHusFaaz4VCAvzSkrUfUyzQFQQj34zIINbEuA0mvH8gOrZuMMS64mH
+        w++nVsHK3saDXf9TEVZuiWDJqQmjjCsH5NmymXiUVn5JKUEkBSeZJmY=
+        -----END CERTIFICATE-----
+
+
+  # CDS replication endpoint TLS certificate trust root
+#    reconciliationChunkSize:       # CDS reconciliation chunk size
+#    reconciliationChunkIntervalMs: # CDS reconciliation chunk interval, in milliseconds
+
+messageCache: # Redis server configuration for message store cache
+  persistDelayMinutes:
+
+  cluster:
+    urls:
+      - redis://172.23.0.2:7001
+      - redis://172.23.0.2:7002
+      - redis://172.23.0.2:7003
+messageDynamoDb:
+  region: us-east-1
+  tableName: message
+
+keysDynamoDb:
+  region: us-east-1
+  tableName: keys
+
+accountsDynamoDb:
+  region: us-east-1
+  tableName: account
+  phoneNumberTableName: phoneNumber
+  endpoint: http://localhost:8090
+  accessKey: AccessKey
+  accessSecret: AccessSecret
+
+metricsCluster:
+  urls:
+    - redis://172.23.0.2:7001
+    - redis://172.23.0.2:7002
+    - redis://172.23.0.2:7003
+
+awsAttachments: # AWS S3 configuration
+  accessKey: Q3AM3UQ867SPQQA43P2F
+  accessSecret: zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
+  bucket: signal
+  region: us-east-1
+  endpoint : localhost:9000
+
+gcpAttachments: # GCP Storage configuration
+  domain: https://backup.dummy.com
+  email: dummy@localtrac.local
+  maxSizeInBytes: 1
+  pathPrefix: /
+  rsaSigningKey: "-----BEGIN PRIVATE KEY-----\n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\nArveVgYgVaENbGLnUQICLIaTHPN9Xqk=\n-----END PRIVATE KEY-----\n"
+
+abuseDatabase: # Postgresql database configuration
+  driverClass: org.postgresql.Driver
+  user: postgres
+  password: postgres
+  url: jdbc:postgresql://127.0.0.1:5432/abusedb
+
+accountsDatabase:
+  driverClass: org.postgresql.Driver
+  user: postgres
+  password: postgres
+  url: jdbc:postgresql://127.0.0.1:5432/accountdb
+
+apn: # Apple Push Notifications configuration
+  sandbox: true
+  bundleId: 1
+  keyId: 1
+  teamId: com.whispersystem
+  signingKey:  "BEGIN PRIVATE KEY
+MIIEpAIBAAKCAQEA9qF7Q3AyS4gOsmmrWGhsiV2bod0zFFJijp6HsKAZdT6pKBNv
+3aqsB7a0jDOvehLTGCOI4Lhe82/0chsZu8vq/GYD9fiJZZxQPvJs1z0aN55pNJ33
+1EuAo37UiO6v11qEORps8DBb9jV9EU0VEeksMnMs1IhVprn+PyiXri3++jJwKbYc
+Rxoh9WAqh+db06hncw/28D3/2P8TWs9Bjiyo7l1d2QBXiJYQ2GgPxEXdkAC/4zaO
+cIuHsr9keHdbf4o22WfAND4fID6voHPbVbjIdAL/V4o6GRn698TAM9IYrFPMxBLt
+fA58Pw+ykd/sZ0U+DtNC4941YihpDY6KQAzw3QIDAQABAoIBAEbXwblwW/IYReh3
+s/E0JaEbk13eVRLMS2UeImnYwxdLhXlug96PbNTWZWw0WH5fM+WmJ2Ytb5DLotK3
++B9ahsgzYYXg+06FpQM/zYXSFlrNlPi5O3vuqCfOgaxHq5jXdk2Uyp//tBq36JH0
+q022xaxEKydtdfTrTh3EQjWVHr2s+O36i1/1Os/TmJ8QVkixJ4HXKOZfn1Z9K89P
+BXiiEZcoyax0gMMZX54EQRvpXCAbaVg6whbjr05xgb2WACANXL1/Ff3DaADqhf4z
+RlBm2Bc/zWQe5bIYR5QPm1BhOfXeRemrEN24dB6sy/oUB3UX2R84VdjLMCicGou/
+hO7l9B0CgYEA/yjdq0aHZ9vAm92u77YiEZAJIPUspDcLAwjefvqdUJ70pGSPsnie
+mkGU2whkuvDkbqzvf0lzGsil5ASrIDLNBnzCADTXe7WgkTY4TqVSB/mhQAV0iai6
+nyxvM9OZb8FA7/SXZ16+up6S1ba0HN5F7gwjXyaYNXkAQLDN4Ke0pEMCgYEA93Fs
+tLDgCkBf6/jLrjStguY9lrYSwzbXWjJTQpn8Iif3jmysMQqpRfDBrN1aiE7bIaJc
+S+BztmNEyOEHKOZRnExwnMBS2uVQTpKTt9RM6D11xRZvlKgMAGQklkooEIOAQWAb
+hY9SGPicKJqaccFVZBFok2wZ1Lkpo0j+EOaKVF8CgYEAy5CR0Lwy+NPkBTXGA+49
+nd9YuReA5v4W5fPkdk+AxDocmS61ScBbYFuj41795fqbdAS6CcXSc/LSDmj/EXAW
+C+/qYnnF1CdiE5e7MltIZ55rXAU+JTkcsjKkASf2iKcYJJfxVoHLDl3GbYQWi9V0
+2uaKLbY/xqFjZzjm9y00u7sCgYADkl2RViRFwZwg2dyGzTfb9drZvBMVQktlf+h3
+w6VCEPWf1q29n3vGCK2jAyb1ZL4BBEj0x26kKVaq16S00G5JJUlS2evYQQshtzfu
+pV/e0lRK3gIKUUqrDscAbF2br2pAh1SeXu0+cwg+Bc1I6xOCeEXcKulMisexFbKl
+J87DXQKBgQCOXIowqvsi9yJJapzp0gM+hzYFP1YxDbq5CHjfMVVMOpXMYz3hUZD3
+TR80vBvQzni2YW7N7aHZ/ZN+NhOdj5lFkbZTHsKpu0nqIFotGTQQ5ckFbPdbXoLL
+Om6AmPRj2vWyKxB5F/d9ZLw1E8cpsVV/XJ65J0tJW6lyHngalVc1fQ==
+END PRIVATE KEY
+"
+
+
+gcm: # GCM Configuration
+  senderId: 493363513780
+  apiKey: AAAAct7BybQ:APA91bGUKWfrlLVJ5QlsQ_1y_BbIBHrWSDmP7jSk2Ldut_hWOJmVVvaS0D1YABrrsJRfyqwrZGPcHwsQG0mqeHrAP0VWk9A6W4nvPga927Dbg_1itteNvnK9qsgDJxcwN2IbX0y7wzir
+cdn:
+  accessKey: Q3AM3UQ867SPQQA43P2F
+  accessSecret: zuf+tfteSlswRu7BJ86wekitnifILbZam1KYY3TG
+  bucket: signal
+  region: us-east-1
+  endpoint: localhost:9000
+
+micrometer: # Micrometer metrics config
+  uri: "https://metrics.example.com/"
+
+recaptcha:
+  secret: secreate
+
+remoteConfig:
+  authorizedTokens:
+    -  # 1st authorized token
+    -  # 2nd authorized token
+    -  # ...
+    -  # Nth authorized token
+  globalConfig:
+    try: config # keys and values that are given to clients on GET /v1/config
+
+paymentsService:
+  userAuthenticationTokenSharedSecret: ddbd4a26c34356a22a4ff6b01ed0f646 # hex-encoded 32-byte secret shared with MobileCoin services used to generate auth tokens for Signal users
+  fixerApiKey: ddbd4a26c34356a22a4ff6b01ed0f646  # hex-encoded 32-byte secret shared with MobileCoin services used to generate auth tokens for Signal users
+  paymentCurrencies:
+    - USD
+
+donation:
+  uri: https://falahtech.co.id # value
+  apiKey: 1 # value
+  supportedCurrencies:
+    -  # 1st supported currency
+    -  # 2nd supported currency
+    -  # ...
+    -  # Nth supported currency
+  circuitBreaker:
+    failureRateThreshold: 1 # value
+    ringBufferSizeInHalfOpenState: 1 # value
+    ringBufferSizeInClosedState: 1 # value
+    waitDurationInOpenStateInSeconds: 1 # value
+  retry:
+    maxAttempts: 1 # value
+    waitDuration: 1 # value
+
+# Dummy Configuration Maybe
+migrationDeletedAccountsDynamoDb:
+  region: us-east-1
+  tableName: account
+
+migrationRetryAccountsDynamoDb:
+  region: us-east-1
+  tableName: account
+
+reportMessageDynamoDb:
+  region: us-east-1
+  tableName: report
+
+appConfig:
+  application: test
+  environment: test
+  configuration: test
+
+backupService:
+  userAuthenticationTokenSharedSecret: 6b9cf1432f4dc50f991bdab29ff44377
+  uri: https://backup.dummy.com
+  backupCaCertificate: "-----BEGIN CERTIFICATE-----
+MIIEFTCCAv2gAwIBAgIUOExB88cXeRv1wODdFSFAi5G9CH4wDQYJKoZIhvcNAQEL
+BQAwgZkxCzAJBgNVBAYTAklEMRAwDgYDVQQIDAdKYWthcnRhMRAwDgYDVQQHDAdK
+YWthcnRhMSQwIgYDVQQKDBtGYWxhaCBJbm92YXNpIFRla25vbG9naSBEZXYxDDAK
+BgNVBAsMA0RldjESMBAGA1UEAwwJbG9jYWxob3N0MR4wHAYJKoZIhvcNAQkBFg9s
+b2NhbEBnbWFpbC5jb20wHhcNMjEwNTIxMDMxNzE1WhcNMjYwNTIwMDMxNzE1WjCB
+mTELMAkGA1UEBhMCSUQxEDAOBgNVBAgMB0pha2FydGExEDAOBgNVBAcMB0pha2Fy
+dGExJDAiBgNVBAoMG0ZhbGFoIElub3Zhc2kgVGVrbm9sb2dpIERldjEMMAoGA1UE
+CwwDRGV2MRIwEAYDVQQDDAlsb2NhbGhvc3QxHjAcBgkqhkiG9w0BCQEWD2xvY2Fs
+QGdtYWlsLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAOC26W4j
+0QSj2jDqogrw2WqZqrKwABGydp4bVErH69yUSrSiR4luHk52HeZbCoWyqYx6z1xD
+lByB/9wR4bwuxw17v0gZWVW71vV3osptEBG9dWY32ZM//2eMX1fBHonX6PqMOSMH
+Vi524c0+mgZPFOulpVUd0MA9VfZrN83Aifb64OJ36I/eHuY9iHk6sFKH5EFhdCqm
+vP0ksKO5XsgBqTv2CtG1UHw0GK2OWUfUxL32n7SxmdMhJFHQO2Nr2RE4RIDFSBGq
+wcMcw81TJLXr04IkV3+mCkNdxyZM6L5gzrnDu7l0Lh+A9rwbVZT/fg8cL/rrKWZ9
+tl6Ddl8JMnsJ4XkCAwEAAaNTMFEwHQYDVR0OBBYEFGCoKW3ybjQSnto2moZthRpZ
+mbl4MB8GA1UdIwQYMBaAFGCoKW3ybjQSnto2moZthRpZmbl4MA8GA1UdEwEB/wQF
+MAMBAf8wDQYJKoZIhvcNAQELBQADggEBACSCqxggFUz+zJqUqXs5YTndrgBDabRe
+1Kb/1yrB+lvkedevzrTIMdPjeIPdH+aYuua+8DyFoaZWDQDgB3uBKI8gr7V15atA
+gSWq0Qwn/4xQjgieKZmnxvvqhEJrwm2VpaOVUSw5gFJoXif4Sw/AJjn9GmYrt1yD
+5+KK11jd+PTPYE4AElK/C6ZHPmPFt02cx0QDe7B6WVK+RLeODgVxWt67zgCI1pfJ
+oP5LRVCOR9VHusFaaz4VCAvzSkrUfUyzQFQQj34zIINbEuA0mvH8gOrZuMMS64mH
+w++nVsHK3saDXf9TEVZuiWDJqQmjjCsH5NmymXiUVn5JKUEkBSeZJmY=
+-----END CERTIFICATE-----"
+
+
+
+
+storageService:
+  userAuthenticationTokenSharedSecret: 00000F
+  uri: https://storageservice
+  storageCaCertificate: "-----BEGIN CERTIFICATE-----
+MIIEFTCCAv2gAwIBAgIUOExB88cXeRv1wODdFSFAi5G9CH4wDQYJKoZIhvcNAQEL
+BQAwgZkxCzAJBgNVBAYTAklEMRAwDgYDVQQIDAdKYWthcnRhMRAwDgYDVQQHDAdK
+YWthcnRhMSQwIgYDVQQKDBtGYWxhaCBJbm92YXNpIFRla25vbG9naSBEZXYxDDAK
+BgNVBAsMA0RldjESMBAGA1UEAwwJbG9jYWxob3N0MR4wHAYJKoZIhvcNAQkBFg9s
+b2NhbEBnbWFpbC5jb20wHhcNMjEwNTIxMDMxNzE1WhcNMjYwNTIwMDMxNzE1WjCB
+mTELMAkGA1UEBhMCSUQxEDAOBgNVBAgMB0pha2FydGExEDAOBgNVBAcMB0pha2Fy
+dGExJDAiBgNVBAoMG0ZhbGFoIElub3Zhc2kgVGVrbm9sb2dpIERldjEMMAoGA1UE
+CwwDRGV2MRIwEAYDVQQDDAlsb2NhbGhvc3QxHjAcBgkqhkiG9w0BCQEWD2xvY2Fs
+QGdtYWlsLmNvbTCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEBAOC26W4j
+0QSj2jDqogrw2WqZqrKwABGydp4bVErH69yUSrSiR4luHk52HeZbCoWyqYx6z1xD
+lByB/9wR4bwuxw17v0gZWVW71vV3osptEBG9dWY32ZM//2eMX1fBHonX6PqMOSMH
+Vi524c0+mgZPFOulpVUd0MA9VfZrN83Aifb64OJ36I/eHuY9iHk6sFKH5EFhdCqm
+vP0ksKO5XsgBqTv2CtG1UHw0GK2OWUfUxL32n7SxmdMhJFHQO2Nr2RE4RIDFSBGq
+wcMcw81TJLXr04IkV3+mCkNdxyZM6L5gzrnDu7l0Lh+A9rwbVZT/fg8cL/rrKWZ9
+tl6Ddl8JMnsJ4XkCAwEAAaNTMFEwHQYDVR0OBBYEFGCoKW3ybjQSnto2moZthRpZ
+mbl4MB8GA1UdIwQYMBaAFGCoKW3ybjQSnto2moZthRpZmbl4MA8GA1UdEwEB/wQF
+MAMBAf8wDQYJKoZIhvcNAQELBQADggEBACSCqxggFUz+zJqUqXs5YTndrgBDabRe
+1Kb/1yrB+lvkedevzrTIMdPjeIPdH+aYuua+8DyFoaZWDQDgB3uBKI8gr7V15atA
+gSWq0Qwn/4xQjgieKZmnxvvqhEJrwm2VpaOVUSw5gFJoXif4Sw/AJjn9GmYrt1yD
+5+KK11jd+PTPYE4AElK/C6ZHPmPFt02cx0QDe7B6WVK+RLeODgVxWt67zgCI1pfJ
+oP5LRVCOR9VHusFaaz4VCAvzSkrUfUyzQFQQj34zIINbEuA0mvH8gOrZuMMS64mH
+w++nVsHK3saDXf9TEVZuiWDJqQmjjCsH5NmymXiUVn5JKUEkBSeZJmY=
+-----END CERTIFICATE-----"
+
+
+
+#redis Configuration
+
+pushSchedulerCluster:
+  urls:
+    - redis://172.23.0.2:7002/
+
+rateLimitersCluster:
+  urls:
+    - redis://172.23.0.2:7003/
+
+clientPresenceCluster:
+  urls:
+    - redis://172.23.0.2:7004/
+
+pubsub:
+  url: redis://172.23.0.2:7005
+  replicaUrls:
+    - redis://172.23.0.2:7005
+
+# DynamoDB
+
+pushChallengeDynamoDb:
+  region: us-east-1
+  tableName: challange
+
+twilio:
+  accountId: test
+  accountToken: test
+  nanpaMessagingServiceSid: test
+  messagingServiceSid: test
+  verifyServiceSid: test
+  localDomain: example.com
+  androidAppHash: thisishashsh
+  verifyServiceFriendlyName: "Skuy Yo"
+  # genericVerificationText: "verification code is - %s"
+  # defaultClientVerificationTexts : "verification code is - %s"
+
+unidentifiedDelivery:
+  certificate: CiUIARIhBX3wxRBUxXDiFF+fS6GGNiI1TFT0xVDIWTdBW+4O26tfEkC7KjNyFNsCRC9eDQ2enr0UxRbqvV0JY0Uzhojg/eQ0Gn36iMKFQ7AuGxVV1b++G1TCKPtxAG2IXaaGcyjicuwA # java -jar TextSecureServer.jar certificate -ca
+  privateKey: CAHQQ47SmVONyCSlNZ+sIvXSEAQ90I1OIAAspFkhPFs=
+  # java -jar TextSecureServer.jar certificate --key priv_key_from_step_above --id key_ID
+  expiresDays: 365
+  # userAuthenticationTokenSharedSecret : SecreateToken
+
+# Certificate: CiUIARIhBQhM74vykd53ybOIPpZKpNhYuxdN58pXRiKKlJFoOmA/EkB7LBkH1rrE2HEMjk7XqAHZMoGL6ccXpiULLB238kqCbJsCW0Ta8WnG5SUGGzJcB2OPO++v7zlmsfdmebKj3QqB
+
+voiceVerification:
+  url: https://example.com
+  locales:
+    - en
+
+zkConfig:
+  serverSecret: AHKJSJg8vzKNc7srzklcxWB1nblS5nk+kBCuBwwIMD8HU3Vk4ykO7KlCJmUbL0njZfvrHw1/I6gW2b9tjLdJYQ44TB/hvPppQ05Lkyqw0sFNTNTOXCvcrmz/aWaKyYohcqrUeHBWnYJq2T3PFEkomWATQkRQogbHg8gosBr9Q5YPGJoC0Ctsgig3YCmJyOUUggtVeGlmtjZv3crX37JzbwOgM8eIG5sNGl/JM6N/joVGfz5eQZPmiCMNwSsefVXMCJxpwrQL+7UjyE9unzgngd4iTAquzzZkdSYh4hUgnsIJIXJ/yPWrtVQq6yjnmOXOqGJzFLbQ8iC0RpONG/b4MwoAe0CFQB2EfyN6TC+dONLWqUsGceuBGdKA4rrr7gx7C6pnlacRtwaRQelQOLDr0cAUHjWgBpggEgXpqVXVj4B1lFk2DmLm5SAG/myW3V7f236yN+dVNGZQIv5pPpfDuivw2hue0Zm+Nsy1aHSiJo1d5dS1hzpJPGx3XFo+6ZdZDlJ7CmKnSltkqeL2rWnc7xmniOo5pB6SGq3nA9Djk9oLwkYtA4slU6JpXKcyj7bRWCb1Ut6JyvzBHfqzv9FRJmKoaiQdpdofSWMnkvPCdKsUB6N8StKkaCFm10tC7EdIAEDvRE6CY7uEDuttkFi4/2N9VEQQM6QMfYR8IzIB0B0DDsYogoEPeWh9C4PJgfSYzlF9kmTiL7mNEmtfTaG76Q2kY7HaQNXfJBhIto20xKJnFvoIWkXMgx3mANA7np59BOwuS0qHE/2uwlqT8p8V7/3ulkuwRqA/0TFp0/amPOAKcA/jrIPp9SlM0EooeEOHMSKynApfpGs2sqVF20lkLgQ0xVa2DKf+Pr8cf6BCVRsHXsfO7azeRPrbuYT9v0sOASquDVOEH+czrQ4wpzjOAf7OFv2ht0r8PGsU9dUURD4NCrUo91nQgxEldZynOfGZmcFtfVZBHxvZiFN3U7nJIwXQX/YXg7iXTXC6P0AQoRZUkgrF6CgLfzk2CoREc47OPg
+  serverPublic: AKpnlacRtwaRQelQOLDr0cAUHjWgBpggEgXpqVXVj4B1lFk2DmLm5SAG/myW3V7f236yN+dVNGZQIv5pPpfDuis0xVa2DKf+Pr8cf6BCVRsHXsfO7azeRPrbuYT9v0sOASquDVOEH+czrQ4wpzjOAf7OFv2ht0r8PGsU9dUURD4N0F/2F4O4l01wuj9AEKEWVJIKxegoC385NgqERHOOzj4
+  enabled: true

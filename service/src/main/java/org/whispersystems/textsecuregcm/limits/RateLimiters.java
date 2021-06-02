@@ -54,6 +54,9 @@ public class RateLimiters {
     this.cacheCluster  = cacheCluster;
     this.dynamicConfig = dynamicConfig;
 
+    System.out.println(dynamicConfig.getConfiguration().getLimits().getDailyPreKeys());
+
+
     this.smsDestinationLimiter = new RateLimiter(cacheCluster, "smsDestination",
                                                  config.getSmsDestination().getBucketSize(),
                                                  config.getSmsDestination().getLeakRatePerMinute());
@@ -126,6 +129,8 @@ public class RateLimiters {
                                               config.getUsernameSet().getBucketSize(),
                                               config.getUsernameSet().getLeakRatePerMinute());
 
+    System.out.println(dynamicConfig.getConfiguration().getLimits().getDailyPreKeys().toString());
+
     this.dailyPreKeysLimiter = new AtomicReference<>(createDailyPreKeysLimiter(cacheCluster, dynamicConfig.getConfiguration().getLimits().getDailyPreKeys()));
 
     this.unsealedSenderCardinalityLimiter = new AtomicReference<>(createUnsealedSenderCardinalityLimiter(cacheCluster, dynamicConfig.getConfiguration().getLimits().getUnsealedSenderNumber()));
@@ -138,6 +143,7 @@ public class RateLimiters {
     this.recaptchaChallengeSuccessLimiter = new AtomicReference<>(createRecaptchaChallengeSuccessLimiter(cacheCluster, dynamicConfig.getConfiguration().getLimits().getRecaptchaChallengeSuccess()));
     this.pushChallengeAttemptLimiter = new AtomicReference<>(createPushChallengeAttemptLimiter(cacheCluster, dynamicConfig.getConfiguration().getLimits().getPushChallengeAttempt()));
     this.pushChallengeSuccessLimiter = new AtomicReference<>(createPushChallengeSuccessLimiter(cacheCluster, dynamicConfig.getConfiguration().getLimits().getPushChallengeSuccess()));
+    System.out.println("helloworld");
   }
 
   public CardinalityRateLimiter getUnsealedSenderCardinalityLimiter() {

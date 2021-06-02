@@ -31,6 +31,8 @@ public class DirectoryController {
   @Path("/auth")
   @Produces(MediaType.APPLICATION_JSON)
   public Response getAuthToken(@Auth Account account) {
+
+    System.out.println( directoryServiceTokenGenerator.generateFor(account.getNumber()).getUsername());
     return Response.ok().entity(directoryServiceTokenGenerator.generateFor(account.getNumber())).build();
   }
 

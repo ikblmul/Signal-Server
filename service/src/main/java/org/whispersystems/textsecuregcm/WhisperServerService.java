@@ -11,7 +11,10 @@ import com.amazonaws.auth.AWSCredentials;
 import com.amazonaws.auth.AWSCredentialsProvider;
 import com.amazonaws.auth.AWSStaticCredentialsProvider;
 import com.amazonaws.auth.BasicAWSCredentials;
+import com.amazonaws.auth.DefaultAWSCredentialsProviderChain;
 import com.amazonaws.auth.InstanceProfileCredentialsProvider;
+import com.amazonaws.client.builder.AwsClientBuilder;
+import com.amazonaws.client.builder.AwsClientBuilder.EndpointConfiguration;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDB;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsync;
 import com.amazonaws.services.dynamodbv2.AmazonDynamoDBAsyncClientBuilder;
@@ -19,6 +22,7 @@ import com.amazonaws.services.dynamodbv2.AmazonDynamoDBClientBuilder;
 import com.amazonaws.services.dynamodbv2.document.DynamoDB;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3Client;
+import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.jdbi3.strategies.DefaultNameStrategy;
 import com.fasterxml.jackson.annotation.JsonAutoDetect;
@@ -38,11 +42,10 @@ import io.dropwizard.jdbi3.JdbiFactory;
 import io.dropwizard.setup.Bootstrap;
 import io.dropwizard.setup.Environment;
 import io.lettuce.core.resource.ClientResources;
-import io.micrometer.core.instrument.Clock;
 import io.micrometer.core.instrument.Metrics;
 import io.micrometer.core.instrument.distribution.DistributionStatisticConfig;
-import io.micrometer.wavefront.WavefrontConfig;
-import io.micrometer.wavefront.WavefrontMeterRegistry;
+import io.micrometer.prometheus.PrometheusConfig;
+import io.micrometer.prometheus.PrometheusMeterRegistry;
 import java.net.http.HttpClient;
 import java.time.Duration;
 import java.util.ArrayList;
@@ -60,6 +63,7 @@ import java.util.concurrent.TimeUnit;
 import javax.servlet.DispatcherType;
 import javax.servlet.FilterRegistration;
 import javax.servlet.ServletRegistration;
+import liquibase.pro.packaged.M;
 import org.eclipse.jetty.servlets.CrossOriginFilter;
 import org.jdbi.v3.core.Jdbi;
 import org.signal.zkgroup.ServerSecretParams;
@@ -85,6 +89,7 @@ import org.whispersystems.textsecuregcm.controllers.DonationController;
 import org.whispersystems.textsecuregcm.controllers.KeepAliveController;
 import org.whispersystems.textsecuregcm.controllers.KeysController;
 import org.whispersystems.textsecuregcm.controllers.MessageController;
+import org.whispersystems.textsecuregcm.controllers.MigrationController;
 import org.whispersystems.textsecuregcm.controllers.PaymentsController;
 import org.whispersystems.textsecuregcm.controllers.ProfileController;
 import org.whispersystems.textsecuregcm.controllers.ProvisioningController;
@@ -202,6 +207,7 @@ import org.whispersystems.textsecuregcm.workers.VacuumCommand;
 import org.whispersystems.textsecuregcm.workers.ZkParamsCommand;
 import org.whispersystems.websocket.WebSocketResourceProviderFactory;
 import org.whispersystems.websocket.setup.WebSocketEnvironment;
+import org.signal.zkgroup.ServerPublicParams;
 
 public class WhisperServerService extends Application<WhisperServerConfiguration> {
 
@@ -240,24 +246,22 @@ public class WhisperServerService extends Application<WhisperServerConfiguration
       throws Exception {
     SharedMetricRegistries.add(Constants.METRICS_NAME, environment.metrics());
 
-    final WavefrontConfig wavefrontConfig = new WavefrontConfig() {
+    final PrometheusConfig prometheusConfig = new PrometheusConfig() {
       @Override
       public String get(final String key) {
         return null;
       }
 
-      @Override
       public String uri() {
         return config.getMicrometerConfiguration().getUri();
       }
 
-      @Override
       public int batchSize() {
         return config.getMicrometerConfiguration().getBatchSize();
       }
     };
 
-    Metrics.addRegistry(new WavefrontMeterRegistry(wavefrontConfig, Clock.SYSTEM) {
+    Metrics.addRegistry(new PrometheusMeterRegistry(prometheusConfig) {
       @Override
       protected DistributionStatisticConfig defaultHistogramConfig() {
         return DistributionStatisticConfig.builder()
@@ -271,33 +275,39 @@ public class WhisperServerService extends Application<WhisperServerConfiguration
     environment.getObjectMapper().setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.NONE);
     environment.getObjectMapper().setVisibility(PropertyAccessor.FIELD, JsonAutoDetect.Visibility.ANY);
 
+    ClientConfiguration clientConfiguration = new ClientConfiguration();
+    clientConfiguration.setSignerOverride("AWSS3V4SignerType");
+
     JdbiFactory jdbiFactory = new JdbiFactory(DefaultNameStrategy.CHECK_EMPTY);
     Jdbi        accountJdbi = jdbiFactory.build(environment, config.getAccountsDatabaseConfiguration(), "accountdb");
     Jdbi        abuseJdbi   = jdbiFactory.build(environment, config.getAbuseDatabaseConfiguration(), "abusedb"  );
 
     FaultTolerantDatabase accountDatabase = new FaultTolerantDatabase("accounts_database", accountJdbi, config.getAccountsDatabaseConfiguration().getCircuitBreakerConfiguration());
     FaultTolerantDatabase abuseDatabase   = new FaultTolerantDatabase("abuse_database", abuseJdbi, config.getAbuseDatabaseConfiguration().getCircuitBreakerConfiguration());
+    EndpointConfiguration endpointConfiguration = new EndpointConfiguration(config.getAccountsDynamoDbConfiguration().getEndpoint(),"us-east-1");
+    AWSCredentialsProvider awsCredentialsProvider = new AWSStaticCredentialsProvider(new BasicAWSCredentials(config.getAccountsDynamoDbConfiguration()
+        .getAccessKey(), config.getAccountsDynamoDbConfiguration().getAccessSecret()));
 
     AmazonDynamoDBClientBuilder messageDynamoDbClientBuilder = AmazonDynamoDBClientBuilder
             .standard()
-            .withRegion(config.getMessageDynamoDbConfiguration().getRegion())
+            .withEndpointConfiguration(endpointConfiguration)
             .withClientConfiguration(new ClientConfiguration().withClientExecutionTimeout(((int) config.getMessageDynamoDbConfiguration().getClientExecutionTimeout().toMillis()))
                                                               .withRequestTimeout((int) config.getMessageDynamoDbConfiguration().getClientRequestTimeout().toMillis()))
-            .withCredentials(InstanceProfileCredentialsProvider.getInstance());
+            .withCredentials(awsCredentialsProvider);
 
     AmazonDynamoDBClientBuilder keysDynamoDbClientBuilder = AmazonDynamoDBClientBuilder
             .standard()
-            .withRegion(config.getKeysDynamoDbConfiguration().getRegion())
+            .withEndpointConfiguration(endpointConfiguration)
             .withClientConfiguration(new ClientConfiguration().withClientExecutionTimeout(((int) config.getKeysDynamoDbConfiguration().getClientExecutionTimeout().toMillis()))
                                                               .withRequestTimeout((int) config.getKeysDynamoDbConfiguration().getClientRequestTimeout().toMillis()))
-            .withCredentials(InstanceProfileCredentialsProvider.getInstance());
+            .withCredentials(awsCredentialsProvider);
 
     AmazonDynamoDBClientBuilder accountsDynamoDbClientBuilder = AmazonDynamoDBClientBuilder
         .standard()
-        .withRegion(config.getAccountsDynamoDbConfiguration().getRegion())
+        .withEndpointConfiguration(endpointConfiguration)
         .withClientConfiguration(new ClientConfiguration().withClientExecutionTimeout(((int) config.getAccountsDynamoDbConfiguration().getClientExecutionTimeout().toMillis()))
             .withRequestTimeout((int) config.getAccountsDynamoDbConfiguration().getClientRequestTimeout().toMillis()))
-        .withCredentials(InstanceProfileCredentialsProvider.getInstance());
+        .withCredentials(awsCredentialsProvider);
 
     // The thread pool core & max sizes are set via dynamic configuration within AccountsDynamoDb
     ThreadPoolExecutor accountsDynamoDbMigrationThreadPool = new ThreadPoolExecutor(1, 1, 0, TimeUnit.SECONDS,
@@ -305,38 +315,38 @@ public class WhisperServerService extends Application<WhisperServerConfiguration
 
     AmazonDynamoDBAsyncClientBuilder accountsDynamoDbAsyncClientBuilder = AmazonDynamoDBAsyncClientBuilder
         .standard()
-        .withRegion(accountsDynamoDbClientBuilder.getRegion())
+        .withEndpointConfiguration(accountsDynamoDbClientBuilder.getEndpoint())
         .withClientConfiguration(accountsDynamoDbClientBuilder.getClientConfiguration())
         .withCredentials(accountsDynamoDbClientBuilder.getCredentials())
         .withExecutorFactory(() -> accountsDynamoDbMigrationThreadPool);
 
     AmazonDynamoDBClientBuilder migrationDeletedAccountsDynamoDbClientBuilder = AmazonDynamoDBClientBuilder
         .standard()
-        .withRegion(config.getMigrationDeletedAccountsDynamoDbConfiguration().getRegion())
+        .withEndpointConfiguration(endpointConfiguration)
         .withClientConfiguration(new ClientConfiguration().withClientExecutionTimeout(((int) config.getMigrationDeletedAccountsDynamoDbConfiguration().getClientExecutionTimeout().toMillis()))
             .withRequestTimeout((int) config.getMigrationDeletedAccountsDynamoDbConfiguration().getClientRequestTimeout().toMillis()))
-        .withCredentials(InstanceProfileCredentialsProvider.getInstance());
+        .withCredentials(awsCredentialsProvider);
 
     AmazonDynamoDBClientBuilder migrationRetryAccountsDynamoDbClientBuilder = AmazonDynamoDBClientBuilder
         .standard()
-        .withRegion(config.getMigrationRetryAccountsDynamoDbConfiguration().getRegion())
+        .withEndpointConfiguration(endpointConfiguration)
         .withClientConfiguration(new ClientConfiguration().withClientExecutionTimeout(((int) config.getMigrationRetryAccountsDynamoDbConfiguration().getClientExecutionTimeout().toMillis()))
             .withRequestTimeout((int) config.getMigrationRetryAccountsDynamoDbConfiguration().getClientRequestTimeout().toMillis()))
-        .withCredentials(InstanceProfileCredentialsProvider.getInstance());
+        .withCredentials(awsCredentialsProvider);
 
     AmazonDynamoDBClientBuilder pushChallengeDynamoDbClientBuilder = AmazonDynamoDBClientBuilder
         .standard()
-        .withRegion(config.getPushChallengeDynamoDbConfiguration().getRegion())
+        .withEndpointConfiguration(endpointConfiguration)
         .withClientConfiguration(new ClientConfiguration().withClientExecutionTimeout(((int) config.getPushChallengeDynamoDbConfiguration().getClientExecutionTimeout().toMillis()))
             .withRequestTimeout((int) config.getPushChallengeDynamoDbConfiguration().getClientRequestTimeout().toMillis()))
-        .withCredentials(InstanceProfileCredentialsProvider.getInstance());
+        .withCredentials(awsCredentialsProvider);
 
     AmazonDynamoDBClientBuilder reportMessageDynamoDbClientBuilder = AmazonDynamoDBClientBuilder
         .standard()
-        .withRegion(config.getReportMessageDynamoDbConfiguration().getRegion())
+        .withEndpointConfiguration(endpointConfiguration)
         .withClientConfiguration(new ClientConfiguration().withClientExecutionTimeout(((int) config.getReportMessageDynamoDbConfiguration().getClientExecutionTimeout().toMillis()))
             .withRequestTimeout((int) config.getReportMessageDynamoDbConfiguration().getClientRequestTimeout().toMillis()))
-        .withCredentials(InstanceProfileCredentialsProvider.getInstance());
+        .withCredentials(awsCredentialsProvider);
 
     DynamoDB messageDynamoDb = new DynamoDB(messageDynamoDbClientBuilder.build());
     DynamoDB preKeyDynamoDb = new DynamoDB(keysDynamoDbClientBuilder.build());
@@ -404,7 +414,7 @@ public class WhisperServerService extends Application<WhisperServerConfiguration
             config.getDirectoryConfiguration().getDirectoryClientConfiguration().getUserAuthenticationTokenUserIdSecret(),
             true);
 
-    DynamicConfigurationManager dynamicConfigurationManager = new DynamicConfigurationManager(config.getAppConfig().getApplication(), config.getAppConfig().getEnvironment(), config.getAppConfig().getConfigurationName());
+    DynamicConfigurationManager dynamicConfigurationManager = new DynamicConfigurationManager(config);
     dynamicConfigurationManager.start();
 
     ExperimentEnrollmentManager experimentEnrollmentManager = new ExperimentEnrollmentManager(dynamicConfigurationManager);
@@ -420,6 +430,7 @@ public class WhisperServerService extends Application<WhisperServerConfiguration
     SecureStorageClient        secureStorageClient        = new SecureStorageClient(storageCredentialsGenerator, storageServiceExecutor, config.getSecureStorageServiceConfiguration());
     ClientPresenceManager      clientPresenceManager      = new ClientPresenceManager(clientPresenceCluster, recurringJobExecutor, keyspaceNotificationDispatchExecutor);
     DirectoryQueue             directoryQueue             = new DirectoryQueue(config.getDirectoryConfiguration().getSqsConfiguration());
+
     PendingAccountsManager     pendingAccountsManager     = new PendingAccountsManager(pendingAccounts, cacheCluster);
     PendingDevicesManager      pendingDevicesManager      = new PendingDevicesManager(pendingDevices, cacheCluster);
     UsernamesManager           usernamesManager           = new UsernamesManager(usernames, reservedUsernames, cacheCluster);
@@ -433,11 +444,16 @@ public class WhisperServerService extends Application<WhisperServerConfiguration
     DeadLetterHandler          deadLetterHandler          = new DeadLetterHandler(accountsManager, messagesManager);
     DispatchManager            dispatchManager            = new DispatchManager(pubSubClientFactory, Optional.of(deadLetterHandler));
     PubSubManager              pubSubManager              = new PubSubManager(pubsubClient, dispatchManager);
-    APNSender                  apnSender                  = new APNSender(apnSenderExecutor, accountsManager, config.getApnConfiguration());
+//    APNSender                  apnSender                  = new APNSender(apnSenderExecutor, accountsManager, config.getApnConfiguration());
     GCMSender                  gcmSender                  = new GCMSender(gcmSenderExecutor, accountsManager, config.getGcmConfiguration().getApiKey());
+
     RateLimiters               rateLimiters               = new RateLimiters(config.getLimitsConfiguration(), dynamicConfigurationManager, rateLimitersCluster);
+    System.out.println("outer devices");
+
     ProvisioningManager        provisioningManager        = new ProvisioningManager(pubSubManager);
+
     TorExitNodeManager         torExitNodeManager         = new TorExitNodeManager(recurringJobExecutor, torExitNodeExecutor, config.getTorExitNodeConfiguration());
+
 
     AccountAuthenticator                  accountAuthenticator                  = new AccountAuthenticator(accountsManager);
     DisabledPermittedAccountAuthenticator disabledPermittedAccountAuthenticator = new DisabledPermittedAccountAuthenticator(accountsManager);
@@ -447,15 +463,17 @@ public class WhisperServerService extends Application<WhisperServerConfiguration
     UnsealedSenderRateLimiter unsealedSenderRateLimiter = new UnsealedSenderRateLimiter(rateLimiters, rateLimitersCluster, dynamicConfigurationManager, rateLimitResetMetricsManager);
     PreKeyRateLimiter preKeyRateLimiter = new PreKeyRateLimiter(rateLimiters, dynamicConfigurationManager, rateLimitResetMetricsManager);
 
-    ApnFallbackManager       apnFallbackManager = new ApnFallbackManager(pushSchedulerCluster, apnSender, accountsManager);
+//    ApnFallbackManager       apnFallbackManager = new ApnFallbackManager(pushSchedulerCluster, apnSender, accountsManager);
     TwilioSmsSender          twilioSmsSender    = new TwilioSmsSender(config.getTwilioConfiguration(), dynamicConfigurationManager);
     SmsSender                smsSender          = new SmsSender(twilioSmsSender);
-    MessageSender            messageSender      = new MessageSender(apnFallbackManager, clientPresenceManager, messagesManager, gcmSender, apnSender, pushLatencyManager);
+    MessageSender            messageSender      = new MessageSender(/*apnFallbackManager, */ clientPresenceManager, messagesManager, gcmSender, /*apnSender,*/ pushLatencyManager);
     ReceiptSender            receiptSender      = new ReceiptSender(accountsManager, messageSender);
     TurnTokenGenerator       turnTokenGenerator = new TurnTokenGenerator(config.getTurnConfiguration());
     RecaptchaClient          recaptchaClient    = new RecaptchaClient(config.getRecaptchaConfiguration().getSecret());
-    PushChallengeManager     pushChallengeManager = new PushChallengeManager(apnSender, gcmSender, pushChallengeDynamoDb);
+    PushChallengeManager     pushChallengeManager = new PushChallengeManager(/*apnSender,*/ gcmSender, pushChallengeDynamoDb);
     RateLimitChallengeManager rateLimitChallengeManager = new RateLimitChallengeManager(pushChallengeManager, recaptchaClient, preKeyRateLimiter, unsealedSenderRateLimiter, rateLimiters, dynamicConfigurationManager);
+
+//    System.out.println("outer devices");
 
     MessagePersister messagePersister = new MessagePersister(messagesCache, messagesManager, accountsManager, dynamicConfigurationManager, Duration.ofMinutes(config.getMessageCacheConfiguration().getPersistDelayMinutes()));
 
@@ -472,15 +490,15 @@ public class WhisperServerService extends Application<WhisperServerConfiguration
     accountDatabaseCrawlerListeners.add(new AccountsDynamoDbMigrator(accountsDynamoDb, dynamicConfigurationManager));
 
     HttpClient                currencyClient  = HttpClient.newBuilder().version(HttpClient.Version.HTTP_2).connectTimeout(Duration.ofSeconds(10)).build();
-    FixerClient               fixerClient     = new FixerClient(currencyClient, config.getPaymentsServiceConfiguration().getFixerApiKey());
-    FtxClient                 ftxClient       = new FtxClient(currencyClient);
-    CurrencyConversionManager currencyManager = new CurrencyConversionManager(fixerClient, ftxClient, config.getPaymentsServiceConfiguration().getPaymentCurrencies());
+//    FixerClient               fixerClient     = new FixerClient(currencyClient, config.getPaymentsServiceConfiguration().getFixerApiKey());
+//    FtxClient                 ftxClient       = new FtxClient(currencyClient);
+//    CurrencyConversionManager currencyManager = new CurrencyConversionManager(fixerClient, ftxClient, config.getPaymentsServiceConfiguration().getPaymentCurrencies());
 
     AccountDatabaseCrawlerCache accountDatabaseCrawlerCache = new AccountDatabaseCrawlerCache(cacheCluster);
     AccountDatabaseCrawler      accountDatabaseCrawler      = new AccountDatabaseCrawler(accountsManager, accountDatabaseCrawlerCache, accountDatabaseCrawlerListeners, config.getAccountDatabaseCrawlerConfiguration().getChunkSize(), config.getAccountDatabaseCrawlerConfiguration().getChunkIntervalMs());
 
-    apnSender.setApnFallbackManager(apnFallbackManager);
-    environment.lifecycle().manage(apnFallbackManager);
+//    apnSender.setApnFallbackManager(apnFallbackManager);
+//    environment.lifecycle().manage(apnFallbackManager);
     environment.lifecycle().manage(pubSubManager);
     environment.lifecycle().manage(messageSender);
     environment.lifecycle().manage(accountDatabaseCrawler);
@@ -488,26 +506,32 @@ public class WhisperServerService extends Application<WhisperServerConfiguration
     environment.lifecycle().manage(messagesCache);
     environment.lifecycle().manage(messagePersister);
     environment.lifecycle().manage(clientPresenceManager);
-    environment.lifecycle().manage(currencyManager);
+//    environment.lifecycle().manage(currencyManager);
     environment.lifecycle().manage(torExitNodeManager);
 
     AWSCredentials         credentials               = new BasicAWSCredentials(config.getCdnConfiguration().getAccessKey(), config.getCdnConfiguration().getAccessSecret());
     AWSCredentialsProvider credentialsProvider       = new AWSStaticCredentialsProvider(credentials);
-    AmazonS3               cdnS3Client               = AmazonS3Client.builder().withCredentials(credentialsProvider).withRegion(config.getCdnConfiguration().getRegion()).build();
+//    AmazonS3               cdnS3Client               = AmazonS3Client.builder().withCredentials(credentialsProvider).withEndpointConfiguration(new EndpointConfiguration("localhost:8000",config.getCdnConfiguration().getRegion())).build();
+    AmazonS3               cdnS3Client               = AmazonS3ClientBuilder.standard().withEndpointConfiguration(new AwsClientBuilder.EndpointConfiguration(config.getCdnConfiguration().getEndpoint(), config.getCdnConfiguration().getRegion())).withPathStyleAccessEnabled(true).withClientConfiguration(clientConfiguration).withCredentials(new AWSStaticCredentialsProvider(credentials)).build();
+
     PostPolicyGenerator    profileCdnPolicyGenerator = new PostPolicyGenerator(config.getCdnConfiguration().getRegion(), config.getCdnConfiguration().getBucket(), config.getCdnConfiguration().getAccessKey());
     PolicySigner           profileCdnPolicySigner    = new PolicySigner(config.getCdnConfiguration().getAccessSecret(), config.getCdnConfiguration().getRegion());
+
+    System.out.println("helloworld");
 
     ServerSecretParams        zkSecretParams         = new ServerSecretParams(config.getZkConfig().getServerSecret());
     ServerZkProfileOperations zkProfileOperations    = new ServerZkProfileOperations(zkSecretParams);
     ServerZkAuthOperations    zkAuthOperations       = new ServerZkAuthOperations(zkSecretParams);
     boolean                   isZkEnabled            = config.getZkConfig().isEnabled();
 
-    AttachmentControllerV1 attachmentControllerV1    = new AttachmentControllerV1(rateLimiters, config.getAwsAttachmentsConfiguration().getAccessKey(), config.getAwsAttachmentsConfiguration().getAccessSecret(), config.getAwsAttachmentsConfiguration().getBucket());
+//    AttachmentControllerV1 attachmentControllerV1    = new AttachmentControllerV1(rateLimiters, config.getAwsAttachmentsConfiguration().getAccessKey(), config.getAwsAttachmentsConfiguration().getAccessSecret(), config.getAwsAttachmentsConfiguration().getBucket());
+    AttachmentControllerV1 attachmentControllerV1    = new AttachmentControllerV1(rateLimiters, config.getAwsAttachmentsConfiguration().getEndpoint(), config.getAwsAttachmentsConfiguration().getAccessKey(), config.getAwsAttachmentsConfiguration().getAccessSecret(), config.getAwsAttachmentsConfiguration().getBucket());
+
     AttachmentControllerV2 attachmentControllerV2    = new AttachmentControllerV2(rateLimiters, config.getAwsAttachmentsConfiguration().getAccessKey(), config.getAwsAttachmentsConfiguration().getAccessSecret(), config.getAwsAttachmentsConfiguration().getRegion(), config.getAwsAttachmentsConfiguration().getBucket());
     AttachmentControllerV3 attachmentControllerV3    = new AttachmentControllerV3(rateLimiters, config.getGcpAttachmentsConfiguration().getDomain(), config.getGcpAttachmentsConfiguration().getEmail(), config.getGcpAttachmentsConfiguration().getMaxSizeInBytes(), config.getGcpAttachmentsConfiguration().getPathPrefix(), config.getGcpAttachmentsConfiguration().getRsaSigningKey());
     DonationController     donationController        = new DonationController(donationExecutor, config.getDonationConfiguration());
     KeysController         keysController            = new KeysController(rateLimiters, keysDynamoDb, accountsManager, directoryQueue, preKeyRateLimiter, dynamicConfigurationManager, rateLimitChallengeManager);
-    MessageController      messageController         = new MessageController(rateLimiters, messageSender, receiptSender, accountsManager, messagesManager, unsealedSenderRateLimiter, apnFallbackManager, dynamicConfigurationManager, rateLimitChallengeManager, reportMessageManager, metricsCluster, declinedMessageReceiptExecutor);
+    MessageController      messageController         = new MessageController(rateLimiters, messageSender, receiptSender, accountsManager, messagesManager, unsealedSenderRateLimiter, /*apnFallbackManager,*/ dynamicConfigurationManager, rateLimitChallengeManager, reportMessageManager, metricsCluster, declinedMessageReceiptExecutor);
     ProfileController      profileController         = new ProfileController(rateLimiters, accountsManager, profilesManager, usernamesManager, dynamicConfigurationManager, cdnS3Client, profileCdnPolicyGenerator, profileCdnPolicySigner, config.getCdnConfiguration().getBucket(), zkProfileOperations, isZkEnabled);
     StickerController      stickerController         = new StickerController(rateLimiters, config.getCdnConfiguration().getAccessKey(), config.getCdnConfiguration().getAccessSecret(), config.getCdnConfiguration().getRegion(), config.getCdnConfiguration().getBucket());
     RemoteConfigController remoteConfigController    = new RemoteConfigController(remoteConfigsManager, config.getRemoteConfigConfiguration().getAuthorizedTokens(), config.getRemoteConfigConfiguration().getGlobalConfig());
@@ -525,15 +549,21 @@ public class WhisperServerService extends Application<WhisperServerConfiguration
                                                                                       DisabledPermittedAccount.class, disabledPermittedAccountAuthFilter)));
     environment.jersey().register(new PolymorphicAuthValueFactoryProvider.Binder<>(ImmutableSet.of(Account.class, DisabledPermittedAccount.class)));
     environment.jersey().register(new TimestampResponseFilter());
-    environment.jersey().register(new AccountController(pendingAccountsManager, accountsManager, usernamesManager, abusiveHostRules, rateLimiters, smsSender, directoryQueue, messagesManager, dynamicConfigurationManager, turnTokenGenerator, config.getTestDevices(), recaptchaClient, gcmSender, apnSender, backupCredentialsGenerator, verifyExperimentEnrollmentManager));
+    environment.jersey().register(new AccountController(pendingAccountsManager, accountsManager, usernamesManager, abusiveHostRules, rateLimiters, smsSender, directoryQueue, messagesManager, dynamicConfigurationManager, turnTokenGenerator, config.getTestDevices(), recaptchaClient, gcmSender, /*apnSender,*/ backupCredentialsGenerator, verifyExperimentEnrollmentManager));
     environment.jersey().register(new DeviceController(pendingDevicesManager, accountsManager, messagesManager, directoryQueue, rateLimiters, config.getMaxDevices()));
+   environment.jersey().register(new MigrationController(
+//       new DynamoDB(AmazonDynamoDBClientBuilder.standard().withCredentials(credentialsProvider).withEndpointConfiguration(endpointConfiguration).build())
+//       messageDynamoDb
+//   keysDynamoDb
+       preKeyDynamoDb
+   ));
     environment.jersey().register(new DirectoryController(directoryCredentialsGenerator));
     environment.jersey().register(new ProvisioningController(rateLimiters, provisioningManager));
     environment.jersey().register(new CertificateController(new CertificateGenerator(config.getDeliveryCertificate().getCertificate(), config.getDeliveryCertificate().getPrivateKey(), config.getDeliveryCertificate().getExpiresDays()), zkAuthOperations, isZkEnabled));
     environment.jersey().register(new VoiceVerificationController(config.getVoiceVerificationConfiguration().getUrl(), config.getVoiceVerificationConfiguration().getLocales()));
     environment.jersey().register(new SecureStorageController(storageCredentialsGenerator));
     environment.jersey().register(new SecureBackupController(backupCredentialsGenerator));
-    environment.jersey().register(new PaymentsController(currencyManager, paymentsCredentialsGenerator));
+//    environment.jersey().register(new PaymentsController(currencyManager, paymentsCredentialsGenerator));
     environment.jersey().register(attachmentControllerV1);
     environment.jersey().register(attachmentControllerV2);
     environment.jersey().register(attachmentControllerV3);
@@ -548,7 +578,7 @@ public class WhisperServerService extends Application<WhisperServerConfiguration
     ///
     WebSocketEnvironment<Account> webSocketEnvironment = new WebSocketEnvironment<>(environment, config.getWebSocketConfiguration(), 90000);
     webSocketEnvironment.setAuthenticator(new WebSocketAccountAuthenticator(accountAuthenticator));
-    webSocketEnvironment.setConnectListener(new AuthenticatedConnectListener(receiptSender, messagesManager, messageSender, apnFallbackManager, clientPresenceManager, retrySchedulingExecutor));
+    webSocketEnvironment.setConnectListener(new AuthenticatedConnectListener(receiptSender, messagesManager, messageSender, /*apnFallbackManager,*/ clientPresenceManager, retrySchedulingExecutor));
     webSocketEnvironment.jersey().register(new MetricsApplicationEventListener(TrafficSource.WEBSOCKET));
     webSocketEnvironment.jersey().register(new KeepAliveController(clientPresenceManager));
     webSocketEnvironment.jersey().register(messageController);
@@ -604,7 +634,7 @@ public class WhisperServerService extends Application<WhisperServerConfiguration
     BufferPoolGauges.registerMetrics();
     GarbageCollectionGauges.registerMetrics();
 
-    new NstatCounters().registerMetrics(recurringJobExecutor, wavefrontConfig.step());
+    new NstatCounters().registerMetrics(recurringJobExecutor, prometheusConfig.step());
   }
 
   private void registerExceptionMappers(Environment environment, WebSocketEnvironment<Account> webSocketEnvironment, WebSocketEnvironment<Account> provisioningEnvironment) {
@@ -638,6 +668,14 @@ public class WhisperServerService extends Application<WhisperServerConfiguration
   }
 
   public static void main(String[] args) throws Exception {
+//    System.loadLibrary("libzkgroup.so");
+    System.out.println(System.getProperty("java.library.path"));
+    System.out.println(System.getProperty("org.signal.zkgroup-java.ServerSecretParams"));
+    System.out.println(System.getProperty("org.signal.zkgroup.ServerSecretParams"));
+    System.out.println(System.getProperty("org.signal.zkgroup"));
     new WhisperServerService().run(args);
+
+    System.out.println("Done Running This Ruine");
+
   }
 }

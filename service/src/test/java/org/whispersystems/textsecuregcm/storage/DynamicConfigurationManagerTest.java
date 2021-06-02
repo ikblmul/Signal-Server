@@ -22,7 +22,7 @@ public class DynamicConfigurationManagerTest {
   @Before
   public void setup() {
     this.appConfig                   = mock(AmazonAppConfig.class);
-    this.dynamicConfigurationManager = new DynamicConfigurationManager(appConfig, "foo", "bar", "baz", "poof");
+    this.dynamicConfigurationManager = new DynamicConfigurationManager(null);
   }
 
   @Test

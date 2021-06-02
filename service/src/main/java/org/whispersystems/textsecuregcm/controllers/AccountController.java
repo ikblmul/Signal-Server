@@ -6,10 +6,16 @@ package org.whispersystems.textsecuregcm.controllers;
 
 import static com.codahale.metrics.MetricRegistry.name;
 
+import com.amazonaws.services.dynamodbv2.model.AttributeDefinition;
+import com.amazonaws.services.dynamodbv2.model.CreateTableRequest;
+import com.amazonaws.services.dynamodbv2.model.KeySchemaElement;
+import com.amazonaws.services.dynamodbv2.model.ProvisionedThroughput;
+import com.amazonaws.services.dynamodbv2.model.ScalarAttributeType;
 import com.codahale.metrics.Meter;
 import com.codahale.metrics.MetricRegistry;
 import com.codahale.metrics.SharedMetricRegistries;
 import com.codahale.metrics.annotation.Timed;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import io.dropwizard.auth.Auth;
 import io.micrometer.core.instrument.Metrics;
@@ -18,6 +24,8 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.LinkedList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -38,6 +46,7 @@ import javax.ws.rs.QueryParam;
 import javax.ws.rs.WebApplicationException;
 import javax.ws.rs.core.MediaType;
 import javax.ws.rs.core.Response;
+import kotlin.jvm.internal.TypeReference;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.whispersystems.textsecuregcm.auth.AuthenticationCredentials;
@@ -73,8 +82,10 @@ import org.whispersystems.textsecuregcm.storage.AbusiveHostRule;
 import org.whispersystems.textsecuregcm.storage.AbusiveHostRules;
 import org.whispersystems.textsecuregcm.storage.Account;
 import org.whispersystems.textsecuregcm.storage.AccountsManager;
+import org.whispersystems.textsecuregcm.storage.ContactAccount;
 import org.whispersystems.textsecuregcm.storage.Device;
 import org.whispersystems.textsecuregcm.storage.DynamicConfigurationManager;
+import org.whispersystems.textsecuregcm.storage.KeysDynamoDb;
 import org.whispersystems.textsecuregcm.storage.MessagesManager;
 import org.whispersystems.textsecuregcm.storage.PendingAccountsManager;
 import org.whispersystems.textsecuregcm.storage.UsernamesManager;
@@ -125,7 +136,7 @@ public class AccountController {
   private final Map<String, Integer>               testDevices;
   private final RecaptchaClient                    recaptchaClient;
   private final GCMSender                          gcmSender;
-  private final APNSender                          apnSender;
+//  private final APNSender                          apnSender;
   private final ExternalServiceCredentialGenerator backupServiceCredentialGenerator;
 
   private final TwilioVerifyExperimentEnrollmentManager verifyExperimentEnrollmentManager;
@@ -143,7 +154,7 @@ public class AccountController {
                            Map<String, Integer> testDevices,
                            RecaptchaClient recaptchaClient,
                            GCMSender gcmSender,
-                           APNSender apnSender,
+//                           APNSender apnSender,
                            ExternalServiceCredentialGenerator backupServiceCredentialGenerator,
                            TwilioVerifyExperimentEnrollmentManager verifyExperimentEnrollmentManager)
   {
@@ -160,7 +171,7 @@ public class AccountController {
     this.turnTokenGenerator                = turnTokenGenerator;
     this.recaptchaClient                   = recaptchaClient;
     this.gcmSender                         = gcmSender;
-    this.apnSender                         = apnSender;
+//    this.apnSender                         = apnSender;
     this.backupServiceCredentialGenerator  = backupServiceCredentialGenerator;
     this.verifyExperimentEnrollmentManager = verifyExperimentEnrollmentManager;
   }
@@ -190,7 +201,7 @@ public class AccountController {
     if ("fcm".equals(pushType)) {
       gcmSender.sendMessage(new GcmMessage(pushToken, number, 0, GcmMessage.Type.CHALLENGE, Optional.of(storedVerificationCode.getPushCode())));
     } else if ("apn".equals(pushType)) {
-      apnSender.sendMessage(new ApnMessage(pushToken, number, 0, true, ApnMessage.Type.CHALLENGE, Optional.of(storedVerificationCode.getPushCode())));
+//      apnSender.sendMessage(new ApnMessage(pushToken, number, 0, true, ApnMessage.Type.CHALLENGE, Optional.of(storedVerificationCode.getPushCode())));
     } else {
       throw new AssertionError();
     }
@@ -220,21 +231,22 @@ public class AccountController {
       transport = "voice";
     }
 
-    String requester = ForwardedIpUtil.getMostRecentProxy(forwardedFor).orElseThrow();
+    logger.info(forwardedFor);
+//    String requester = ForwardedIpUtil.getMostRecentProxy(forwardedFor).orElseThrow();
 
     Optional<StoredVerificationCode> storedChallenge = pendingAccounts.getCodeForNumber(number);
-    CaptchaRequirement               requirement     = requiresCaptcha(number, transport, forwardedFor, requester, captcha, storedChallenge, pushChallenge);
+//    CaptchaRequirement               requirement     = requiresCaptcha(number, transport, forwardedFor, requester, captcha, storedChallenge, pushChallenge);
 
-    if (requirement.isCaptchaRequired()) {
-      captchaRequiredMeter.mark();
-
-      if (requirement.isAutoBlock() && shouldAutoBlock(requester)) {
-        logger.info("Auto-block: " + requester);
-        abusiveHostRules.setBlockedHost(requester, "Auto-Block");
-      }
-
-      return Response.status(402).build();
-    }
+//    if (requirement.isCaptchaRequired()) {
+//      captchaRequiredMeter.mark();
+//
+//      if (requirement.isAutoBlock() && shouldAutoBlock(requester)) {
+//        logger.info("Auto-block: " + requester);
+//        abusiveHostRules.setBlockedHost(requester, "Auto-Block");
+//      }
+//
+//      return Response.status(402).build();
+//    }
 
     try {
       switch (transport) {
@@ -419,13 +431,14 @@ public class AccountController {
   @Produces(MediaType.APPLICATION_JSON)
   public TurnToken getTurnToken(@Auth Account account) throws RateLimitExceededException {
     rateLimiters.getTurnLimiter().validate(account.getNumber());
-    return turnTokenGenerator.generate();
+    TurnToken turnServer  = turnTokenGenerator.generate();
+    System.out.println(turnServer.toString());
+    return turnServer;
   }
 
   @Timed
   @PUT
   @Path("/gcm/")
-  @Consumes(MediaType.APPLICATION_JSON)
   public void setGcmRegistrationId(@Auth DisabledPermittedAccount disabledPermittedAccount, @Valid GcmRegistrationId registrationId) {
     Account account           = disabledPermittedAccount.getAccount();
     Device  device            = account.getAuthenticatedDevice().get();
@@ -736,6 +749,15 @@ public class AccountController {
 
     return false;
   }
+  @GET
+  @Path("/get-number")
+  public Response getNumbers(){
+
+    HashMap<String,UUID> accounts = new HashMap<>();
+//    accounts.putAll;
+    
+  return Response.ok().entity(accounts).build();
+  }
 
   private Account createAccount(String number, String password, String signalAgent, AccountAttributes accountAttributes) {
     Optional<Account> maybeExistingAccount = accounts.get(number);
@@ -800,6 +822,20 @@ public class AccountController {
     random.nextBytes(challenge);
 
     return Hex.toStringCondensed(challenge);
+  }
+
+  @GET
+  @Path("/accountAll")
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response getAll(){
+    ObjectMapper objectMapper =  new ObjectMapper();
+    List<Account> iterableAccount = accounts.getAllFrom(30);
+    List<ContactAccount> convert = new ArrayList<>(30);
+    for (var acc : iterableAccount){
+      convert.add(ContactAccount.ContactAccountFactory(acc.getUuid(),acc.getNumber()));
+    }
+
+    return Response.ok().entity(convert).build();
   }
 
   private static class CaptchaRequirement {

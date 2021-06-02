@@ -51,11 +51,12 @@ public class MessageSenderTest {
         messagesManager       = mock(MessagesManager.class);
         gcmSender             = mock(GCMSender.class);
         apnSender             = mock(APNSender.class);
-        messageSender         = new MessageSender(mock(ApnFallbackManager.class),
+        messageSender         = new MessageSender(
+//            mock(ApnFallbackManager.class),
                                                   clientPresenceManager,
                                                   messagesManager,
                                                   gcmSender,
-                                                  apnSender,
+//                                                  apnSender,
                                                   mock(PushLatencyManager.class));
 
         when(account.getUuid()).thenReturn(ACCOUNT_UUID);

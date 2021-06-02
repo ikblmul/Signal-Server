@@ -9,6 +9,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import javax.validation.constraints.NotEmpty;
 
 public class CdnConfiguration {
+
+  @NotEmpty
+  @JsonProperty
+  private String endpoint;
+
   @NotEmpty
   @JsonProperty
   private String accessKey;
@@ -40,5 +45,7 @@ public class CdnConfiguration {
   public String getRegion() {
     return region;
   }
+
+  public String getEndpoint(){return endpoint;}
 
 }

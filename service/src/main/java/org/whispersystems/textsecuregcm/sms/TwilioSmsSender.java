@@ -45,6 +45,7 @@ import org.whispersystems.textsecuregcm.util.Constants;
 import org.whispersystems.textsecuregcm.util.ExecutorUtils;
 import org.whispersystems.textsecuregcm.util.SystemMapper;
 import org.whispersystems.textsecuregcm.util.Util;
+import org.whispersystems.textsecuregcm.util.VerificationCode;
 
 @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
 public class TwilioSmsSender {
@@ -112,22 +113,27 @@ public class TwilioSmsSender {
 
   public CompletableFuture<Boolean> deliverSmsVerification(String destination, Optional<String> clientType, String verificationCode) {
 
-    Map<String, String> requestParameters = new HashMap<>();
-    requestParameters.put("To", destination);
-    requestParameters.put("MessagingServiceSid", "1".equals(Util.getCountryCode(destination)) ? nanpaMessagingServiceSid : messagingServiceSid);
-    requestParameters.put("Body", String.format(Locale.US, getBodyFormatString(destination, clientType.orElse(null)), verificationCode));
+    CompletableFuture<Boolean> completableFuture = new CompletableFuture<Boolean>();
 
-    HttpRequest request = HttpRequest.newBuilder()
-                                     .uri(smsUri)
-                                     .POST(FormDataBodyPublisher.of(requestParameters))
-                                     .header("Content-Type", "application/x-www-form-urlencoded")
-                                     .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((accountId + ":" + accountToken).getBytes(StandardCharsets.UTF_8)))
-                                     .build();
+    completableFuture.complete(true);
 
-    smsMeter.mark();
+//    Map<String, String> requestParameters = new HashMap<>();
+//    requestParameters.put("To", destination);
+//    requestParameters.put("MessagingServiceSid", "1".equals(Util.getCountryCode(destination)) ? nanpaMessagingServiceSid : messagingServiceSid);
+//    requestParameters.put("Body", String.format(Locale.US, getBodyFormatString(destination, clientType.orElse(null)), verificationCode));
 
-    return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                     .thenApply(this::parseResponse).handle(this::processResponse);
+    logger.info("OTP is :" + verificationCode);
+
+//    HttpRequest request = HttpRequest.newBuilder()
+//                                     .uri(smsUri)
+//                                     .POST(FormDataBodyPublisher.of(requestParameters))
+//                                     .header("Content-Type", "application/x-www-form-urlencoded")
+//                                     .header("Authorization", "Basic " + Base64.getEncoder().encodeToString((accountId + ":" + accountToken).getBytes(StandardCharsets.UTF_8)))
+//                                     .build();
+
+//    smsMeter.mark();
+
+    return completableFuture;
   }
 
   private String getBodyFormatString(@Nonnull String destination, @Nullable String clientType) {

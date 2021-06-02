@@ -141,7 +141,7 @@ class MessageControllerTest {
                                                             .addProvider(new RateLimitChallengeExceptionMapper(rateLimitChallengeManager))
                                                             .setTestContainerFactory(new GrizzlyWebTestContainerFactory())
                                                             .addResource(new MessageController(rateLimiters, messageSender, receiptSender, accountsManager,
-                                                                                               messagesManager, unsealedSenderRateLimiter, apnFallbackManager, dynamicConfigurationManager,
+                                                                                               messagesManager, unsealedSenderRateLimiter, /*apnFallbackManager,*/ dynamicConfigurationManager,
                                                                                                rateLimitChallengeManager, reportMessageManager, metricsCluster, receiptExecutor))
                                                             .build();
 

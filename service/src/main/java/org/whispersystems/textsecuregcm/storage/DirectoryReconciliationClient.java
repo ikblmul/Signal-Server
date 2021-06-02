@@ -51,6 +51,7 @@ public class DirectoryReconciliationClient {
       throws CertificateException
   {
     KeyStore   trustStore = CertificateUtil.buildKeyStoreForPem(directoryServerConfiguration.getReplicationCaCertificate());
+
     SSLContext sslContext = SslConfigurator.newInstance()
                                            .securityProtocol("TLSv1.2")
                                            .trustStore(trustStore)
